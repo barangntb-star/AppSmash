@@ -1,0 +1,6 @@
+{
+  "name": "Sewa Lapangan Bulu Tangkis",
+  "description": "Aplikasi penyewaan lapangan bulu tangkis real-time dengan integrasi database Google Sheets, pembayaran interaktif, dan pemindai QR Code jadwal lapangan.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
