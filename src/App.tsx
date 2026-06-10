@@ -38,6 +38,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState<{ code: string; message: string; isDomainError: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Database Spreadsheet state
@@ -61,6 +62,7 @@ export default function App() {
         setUser(currentUser);
         setToken(cachedToken);
         setNeedsAuth(false);
+        setAuthError(null);
       },
       () => {
         setNeedsAuth(true);
@@ -87,9 +89,11 @@ export default function App() {
           readBookings(token, sheetId)
         ]);
 
-        setCourts(fetchedCourts);
+        // Capped to at most 2 courts (Lapangan A & B)
+        const cappedCourts = fetchedCourts.slice(0, 2);
+        setCourts(cappedCourts);
         setBookings(fetchedBookings);
-        if (fetchedCourts.length > 0) {
+        if (cappedCourts.length > 0) {
           setSelectedCourtId(fetchedCourts[0].id);
         }
       } catch (err: any) {
@@ -111,6 +115,7 @@ export default function App() {
   const handleLogin = async () => {
     setIsLoggingIn(true);
     setDbError(null);
+    setAuthError(null);
     try {
       const result = await googleSignIn();
       if (result) {
@@ -120,7 +125,13 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Login failed:', err);
-      alert(`Login gagal: ${err.message || err}`);
+      const errMsg = err.message || String(err);
+      const isDomainError = errMsg.includes("auth/unauthorized-domain") || errMsg.includes("unauthorized-domain");
+      setAuthError({
+        code: isDomainError ? 'auth/unauthorized-domain' : 'auth/error',
+        message: errMsg,
+        isDomainError
+      });
     } finally {
       setIsLoggingIn(false);
     }
@@ -146,7 +157,8 @@ export default function App() {
         readCourts(token, spreadsheetId),
         readBookings(token, spreadsheetId)
       ]);
-      setCourts(fetchedCourts);
+      // Capped to at most 2 courts (Lapangan A & B)
+      setCourts(fetchedCourts.slice(0, 2));
       setBookings(fetchedBookings);
     } catch (err: any) {
       console.error("Failed to refresh data:", err);
@@ -226,6 +238,36 @@ export default function App() {
                 <span className="text-slate-800 text-xs font-semibold">Integrasikan dengan Google Sheets</span>
               </div>
             </button>
+
+            {/* Auth Error Guidance Banner */}
+            {authError && (
+              <div className="mt-5 p-4 bg-slate-800/80 border border-white/10 rounded-xl text-left text-xs text-slate-200">
+                <div className="flex items-start gap-2.5 text-rose-450 font-bold mb-1.5">
+                  <AlertCircle className="w-4.5 h-4.5 flex-shrink-0 text-rose-450" />
+                  <span>{authError.isDomainError ? "Firebase Unauthorized Domain" : "Gagal Masuk"}</span>
+                </div>
+                {authError.isDomainError ? (
+                  <div className="space-y-2 mt-1">
+                    <p className="text-slate-350 leading-relaxed text-[11px]">
+                      Domain aplikasi Anda belum didaftarkan di Authorized Domains konsol Firebase Anda. Silakan ikuti langkah mudah berikut:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 text-slate-350 text-[10.5px]">
+                      <li>Buka <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline font-medium">Konsol Firebase</a></li>
+                      <li>Masuk ke menu <strong className="text-white">Build &gt; Authentication &gt; Settings &gt; Authorized Domains</strong></li>
+                      <li>Tambahkan domain-domain berikut ini:</li>
+                    </ol>
+                    <div className="bg-slate-950 border border-white/5 p-2.5 rounded font-mono text-[10px] text-emerald-400 select-all space-y-1 break-all">
+                      <div>ais-dev-p5timo3idklox5nvlx6avl-865534130610.asia-southeast1.run.app</div>
+                      <div>ais-pre-p5timo3idklox5nvlx6avl-865534130610.asia-southeast1.run.app</div>
+                      <div>localhost</div>
+                    </div>
+                    <p className="text-[10px] text-slate-450 italic mt-1.5 font-medium">Setelah ditambahkan, silakan klik tombol masuk kembali.</p>
+                  </div>
+                ) : (
+                  <p className="text-slate-350 leading-relaxed text-[11px]">{authError.message}</p>
+                )}
+              </div>
+            )}
 
             {/* Security disclaimer */}
             <div className="flex items-center gap-1.5 justify-center mt-6 text-[10px] text-slate-400">
@@ -340,40 +382,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Quick overview of court badges */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {courts.map((court) => (
-                <div 
-                  key={court.id}
-                  onClick={() => setSelectedCourtId(court.id)}
-                  className={`bg-white rounded-2xl border overflow-hidden shadow-xs cursor-pointer transition-all hover:shadow-md ${
-                    selectedCourtId === court.id
-                    ? 'border-emerald-600 ring-2 ring-emerald-50'
-                    : 'border-slate-100'
-                  }`}
-                >
-                  <div className="h-32 relative bg-slate-100">
-                    <img 
-                      src={court.imageUrl} 
-                      alt={court.name}
-                      className="w-full h-full object-cover" 
-                    />
-                    <div className="absolute top-2.5 left-2.5 bg-slate-900/70 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
-                      {court.id}
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-slate-800 text-sm leading-tight text-slate-905">{court.name}</h3>
-                    <p className="text-xs text-slate-450 line-clamp-2 mt-1 leading-normal font-medium">{court.description}</p>
-                    
-                    <div className="mt-3 pt-2.5 border-t border-slate-50 flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-medium">Sewa / Jam</span>
-                      <strong className="text-emerald-700 font-bold font-mono">Rp {court.pricePerHour.toLocaleString()}</strong>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Quick overview of court badges removed per user instruction to clean court info details */}
 
             {/* Scheduler & Booking Form Section */}
             <section id="scheduler-section" className="scroll-mt-24">

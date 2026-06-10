@@ -56,6 +56,10 @@ export default function CourtSchedule({
 
   // Determine slot occupancy status
   const hourlySlotsWithStatus = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const currentHour = today.getHours();
+
     return HOURS.map(slot => {
       // Check if this slot overlaps with any active booking
       // A booking overlaps if: booking.startTime < slot.end AND booking.endTime > slot.start
@@ -64,14 +68,17 @@ export default function CourtSchedule({
         return b.startTime < slot.end && b.endTime > slot.start;
       });
 
+      const isPast = (selectedDate < todayStr) || (selectedDate === todayStr && slot.startVal <= currentHour);
+
       return {
         ...slot,
         isOccupied: !!occupier,
+        isPast,
         occupierName: occupier ? occupier.customerName : null,
         paymentStatus: occupier ? occupier.paymentStatus : null,
       };
     });
-  }, [activeBookings]);
+  }, [activeBookings, selectedDate]);
 
   // Calculate booking end options based on starting slot and limits
   const endOptions = useMemo(() => {
@@ -99,8 +106,8 @@ export default function CourtSchedule({
   }, [bookingSlot, activeBookings]);
 
   // Handle slot selection click
-  const handleSlotClick = (slot: typeof HOURS[0], isOccupied: boolean) => {
-    if (isOccupied) return;
+  const handleSlotClick = (slot: typeof HOURS[0] & { isPast?: boolean }, isOccupied: boolean) => {
+    if (isOccupied || slot.isPast) return;
     setBookingSlot(slot);
     setDurationHours(1);
     setCustName('');
@@ -112,6 +119,15 @@ export default function CourtSchedule({
     if (!bookingSlot || !activeCourt) return;
     if (!custName.trim() || !custPhone.trim()) {
       alert("Harap lengkapi nama dan nomor WhatsApp Anda.");
+      return;
+    }
+
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const currentHour = today.getHours();
+    
+    if (selectedDate < todayStr || (selectedDate === todayStr && bookingSlot.startVal <= currentHour)) {
+      alert("Maaf, pemesanan sewa tidak dapat dilakukan untuk waktu yang telah lewat.");
       return;
     }
 
@@ -264,43 +280,63 @@ export default function CourtSchedule({
 
         {/* Timetable schedule grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 flex-1 max-h-[500px] overflow-y-auto pr-1">
-          {hourlySlotsWithStatus.map((slot) => (
-            <button
-              key={slot.start}
-              onClick={() => handleSlotClick(slot, slot.isOccupied)}
-              className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group ${
-                slot.isOccupied
-                  ? 'bg-rose-50/70 border-rose-100/80 text-rose-900 cursor-not-allowed'
-                  : 'bg-white border-slate-200 text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 shadow-xs cursor-pointer'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${slot.isOccupied ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'}`}>
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold font-mono text-slate-900">{slot.start} - {slot.end}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {slot.isOccupied ? `Dipesan o/ ${slot.occupierName}` : 'Klik untuk Booking'}
+          {hourlySlotsWithStatus.map((slot) => {
+            const isDisabled = slot.isOccupied || slot.isPast;
+            const bgClass = slot.isOccupied
+              ? 'bg-rose-50/70 border-rose-100/80 text-rose-900 cursor-not-allowed'
+              : slot.isPast
+                ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                : 'bg-white border-slate-200 text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 shadow-xs cursor-pointer';
+
+            return (
+              <button
+                key={slot.start}
+                disabled={isDisabled}
+                onClick={() => handleSlotClick(slot, slot.isOccupied)}
+                className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group ${bgClass}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${
+                    slot.isOccupied
+                      ? 'bg-rose-100 text-rose-700'
+                      : slot.isPast
+                        ? 'bg-slate-100 text-slate-400'
+                        : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                  }`}>
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold font-mono text-slate-900">{slot.start} - {slot.end}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      {slot.isOccupied
+                        ? `Dipesan o/ ${slot.occupierName}`
+                        : slot.isPast
+                          ? 'Selesai / Waktu Lewat'
+                          : 'Klik untuk Booking'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                {slot.isOccupied ? (
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                    slot.paymentStatus === 'Lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {slot.paymentStatus === 'Lunas' ? 'Lunas' : 'Belum Bayar'}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                    Tersedia
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+                <div>
+                  {slot.isOccupied ? (
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                      slot.paymentStatus === 'Lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {slot.paymentStatus === 'Lunas' ? 'Lunas' : 'Belum Bayar'}
+                    </span>
+                  ) : slot.isPast ? (
+                    <span className="text-[10px] font-semibold bg-slate-200 text-slate-500 px-2 py-0.5 rounded-md">
+                      Lewat
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      Tersedia
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Info Legend */}
@@ -312,6 +348,10 @@ export default function CourtSchedule({
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 border border-rose-300"></span>
             Dipesan
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-300 border border-slate-200"></span>
+            Selesai / Lewat
           </div>
         </div>
       </div>

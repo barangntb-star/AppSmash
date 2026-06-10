@@ -77,12 +77,11 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
     console.log("Successfully created spreadsheet with ID:", spreadsheetId);
 
     // 3. Populate default Courts rows
-    const courtsRange = 'Courts!A1:E4';
+    const courtsRange = 'Courts!A1:E3';
     const courtsValues = [
       ["Court ID", "Name", "Description", "Price Per Hour (IDR)", "Image URL"],
-      ["CT001", "Lapangan 1 - Vinyl Premium", "Karpet vinyl tebal standar BWF (Badminton World Federation), peredam kejut maksimal, penerangan LED ganda bebas silau.", 65000, "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600"],
-      ["CT002", "Lapangan 2 - Vinyl Standard", "Lantai karpet vinyl berkualitas, sirkulasi udara baik, nyaman untuk permainan single maupun double.", 50000, "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600"],
-      ["CT003", "Lapangan 3 - Kayu Parket Klasik", "Lantai kayu parket premium berstandar internasional, memberikan pantulan shuttlecock yang sempurna dan estetika klasik.", 80000, "https://images.unsplash.com/photo-1521537634180-6b7caf9ea970?auto=format&fit=crop&q=80&w=600"]
+      ["CT001", "Lapangan A Reguler", "Lantai karpet vinyl berkualitas premium berstandar nasional, peredam kejut nyaman, pencahayaan LED terang bebas silau.", 60000, "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600"],
+      ["CT002", "Lapangan B Reguler", "Lantai papan kayu parket tebal standar latihan, nyaman untuk permainan single maupun double dengan sirkulasi udara baik.", 50000, "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600"]
     ];
 
     const courtsUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${courtsRange}?valueInputOption=USER_ENTERED`;
@@ -96,7 +95,7 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
     });
 
     // 4. Populate default Bookings headers and some seed rows for today/tomorrow to look active
-    const bookingsRange = 'Bookings!A1:L4';
+    const bookingsRange = 'Bookings!A1:L3';
     const todayStr = new Date().toISOString().split('T')[0];
     
     // Create tomorrow's date
@@ -106,9 +105,8 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
 
     const bookingsValues = [
       ["Booking ID", "Court ID", "Court Name", "Customer Name", "Customer Phone", "Booking Date", "Start Time", "End Time", "Total Price (IDR)", "Payment Method", "Payment Status", "Created At"],
-      ["BK100234", "CT001", "Lapangan 1 - Vinyl Premium", "Ahmad Syarif", "081234567890", todayStr, "16:00", "18:00", 130000, "QRIS", "Lunas", new Date().toISOString()],
-      ["BK100235", "CT002", "Lapangan 2 - Vinyl Standard", "Budi Santoso", "087766554433", todayStr, "19:00", "21:00", 100000, "Transfer Bank", "Lunas", new Date().toISOString()],
-      ["BK100236", "CT003", "Lapangan 3 - Kayu Parket Klasik", "Amelia Putri", "081909876543", tomorrowStr, "09:00", "11:00", 160000, "E-Wallet", "Menunggu Pembayaran", new Date().toISOString()]
+      ["BK100234", "CT001", "Lapangan A Reguler", "Ahmad Syarif", "081234567890", todayStr, "16:00", "18:00", 120000, "QRIS", "Lunas", new Date().toISOString()],
+      ["BK100235", "CT002", "Lapangan B Reguler", "Budi Santoso", "087766554433", tomorrowStr, "19:00", "21:00", 100000, "Transfer Bank", "Lunas", new Date().toISOString()]
     ];
 
     const bookingsUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${bookingsRange}?valueInputOption=USER_ENTERED`;
