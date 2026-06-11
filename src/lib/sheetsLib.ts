@@ -93,8 +93,8 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
     const courtsRange = 'Courts!A1:E3';
     const courtsValues = [
       ["Court ID", "Name", "Description", "Price Per Hour (IDR)", "Image URL"],
-      ["CT001", "Lapangan A Reguler", "Lantai karpet vinyl berkualitas premium berstandar nasional, peredam kejut nyaman, pencahayaan LED terang bebas silau.", 60000, "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600"],
-      ["CT002", "Lapangan B Reguler", "Lantai papan kayu parket tebal standar latihan, nyaman untuk permainan single maupun double dengan sirkulasi udara baik.", 50000, "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600"]
+      ["CT001", "Lapangan 1", "Lantai karpet vinyl berkualitas premium berstandar nasional, peredam kejut nyaman, pencahayaan LED terang bebas silau.", 30000, "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=600"],
+      ["CT002", "Lapangan 2", "Lantai papan kayu parket tebal standar latihan, nyaman untuk permainan single maupun double dengan sirkulasi udara baik.", 30000, "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=600"]
     ];
 
     const courtsUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${courtsRange}?valueInputOption=USER_ENTERED`;
@@ -118,8 +118,8 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
 
     const bookingsValues = [
       ["Booking ID", "Court ID", "Court Name", "Customer Name", "Customer Phone", "Booking Date", "Start Time", "End Time", "Total Price (IDR)", "Payment Method", "Payment Status", "Created At"],
-      ["BK100234", "CT001", "Lapangan A Reguler", "Ahmad Syarif", "081234567890", todayStr, "16:00", "18:00", 120000, "QRIS", "Lunas", new Date().toISOString()],
-      ["BK100235", "CT002", "Lapangan B Reguler", "Budi Santoso", "087766554433", tomorrowStr, "19:00", "21:00", 100000, "Transfer Bank", "Lunas", new Date().toISOString()]
+      ["BK100234", "CT001", "Lapangan 1", "Ahmad Syarif", "081234567890", todayStr, "16:00", "18:00", 80000, "QRIS", "Lunas", new Date().toISOString()],
+      ["BK100235", "CT002", "Lapangan 2", "Budi Santoso", "087766554433", tomorrowStr, "19:00", "21:00", 80000, "Transfer Bank", "Lunas", new Date().toISOString()]
     ];
 
     const bookingsUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${bookingsRange}?valueInputOption=USER_ENTERED`;

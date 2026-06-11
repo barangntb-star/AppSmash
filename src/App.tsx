@@ -56,11 +56,20 @@ export default function App() {
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string>('CT001');
   const [activeTab, setActiveTab] = useState<'scheduler' | 'barcodes' | 'admin'>('scheduler');
+  const [isScanned, setIsScanned] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('scanned') === 'true';
+  });
 
   // Synchronise deep-linking QR barcodes parameter
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const courtIdParam = params.get('courtId');
+    const isScannedParam = params.get('scanned') === 'true';
+    if (isScannedParam) {
+      setIsScanned(true);
+      setActiveTab('scheduler');
+    }
     if (courtIdParam) {
       setSelectedCourtId(courtIdParam);
       setActiveTab('scheduler');
@@ -241,7 +250,7 @@ export default function App() {
               <Flame className="w-8 h-8 text-white" />
             </div>
 
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Gelora Badminton Arena</h1>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Fazada Badminton</h1>
             <p className="text-emerald-400 text-xs font-semibold uppercase tracking-widest mt-1">Portal Sewa Lapangan Online</p>
             
             <p className="text-slate-350 text-xs leading-relaxed mt-4 mb-6">
@@ -315,10 +324,10 @@ export default function App() {
               {/* Brand Logo */}
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">
-                  G
+                  F
                 </div>
                 <div>
-                  <h1 className="font-extrabold text-slate-800 text-sm tracking-tight leading-tighter">Gelora Badminton</h1>
+                  <h1 className="font-extrabold text-slate-800 text-sm tracking-tight leading-tighter">Fazada Badminton</h1>
                   <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block leading-none">Reservasi Portal</span>
                 </div>
               </div>
@@ -327,39 +336,49 @@ export default function App() {
               <div className="flex items-center gap-4">
                 
                 {/* Float Barcode Scanner button */}
-                <button
-                  onClick={() => setIsScannerOpen(true)}
-                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-100 transition-all shadow-xs"
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span className="hidden sm:inline">Scan QR Lapangan</span>
-                </button>
+                {!isScanned && (
+                  <button
+                    onClick={() => setIsScannerOpen(true)}
+                    className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-100 transition-all shadow-xs"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span className="hidden sm:inline">Scan QR Lapangan</span>
+                  </button>
+                )}
 
                 {/* Account card and logout */}
                 <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
-                  {user?.photoURL ? (
-                    <img 
-                      src={user.photoURL} 
-                      alt={user.displayName} 
-                      className="w-8 h-8 rounded-full border border-slate-200 referrerPolicy='no-referrer'" 
-                    />
-                  ) : (
-                    <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-bold text-xs capitalize">
-                      {user?.displayName ? user.displayName[0] : 'U'}
+                  {isScanned ? (
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-700">
+                      Mode Penyewa Aktif
                     </div>
+                  ) : (
+                    <>
+                      {user?.photoURL ? (
+                        <img 
+                          src={user.photoURL} 
+                          alt={user.displayName} 
+                          className="w-8 h-8 rounded-full border border-slate-200 referrerPolicy='no-referrer'" 
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-bold text-xs capitalize">
+                          {user?.displayName ? user.displayName[0] : 'U'}
+                        </div>
+                      )}
+                      <div className="hidden md:block text-left">
+                        <span className="text-xs font-semibold text-slate-700 block leading-none">{user?.displayName}</span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5 leading-none">{user?.email}</span>
+                      </div>
+                      
+                      <button
+                        onClick={handleLogout}
+                        className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-1"
+                        title="Sign Out"
+                      >
+                        <LogOut className="w-4.5 h-4.5" />
+                      </button>
+                    </>
                   )}
-                  <div className="hidden md:block text-left">
-                    <span className="text-xs font-semibold text-slate-700 block leading-none">{user?.displayName}</span>
-                    <span className="text-[9px] text-slate-400 block mt-0.5 leading-none">{user?.email}</span>
-                  </div>
-                  
-                  <button
-                    onClick={handleLogout}
-                    className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-1"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-4.5 h-4.5" />
-                  </button>
                 </div>
               </div>
 
@@ -367,56 +386,58 @@ export default function App() {
           </header>
 
           {/* Tab Navigation Subheader */}
-          <div className="bg-white border-b border-slate-100 sticky top-18 z-20 shadow-xs print:hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex gap-6 h-13 items-center">
-                <button
-                  onClick={() => setActiveTab('scheduler')}
-                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'scheduler' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  Jadwal & Booking Lapangan
-                  {activeTab === 'scheduler' && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
-                  )}
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab('barcodes')}
-                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'barcodes' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <QrCode className="w-4 h-4" />
-                  Cetak QR / Barcode Lapangan
-                  {activeTab === 'barcodes' && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
-                  )}
-                </button>
+          {!isScanned && (
+            <div className="bg-white border-b border-slate-100 sticky top-18 z-20 shadow-xs print:hidden">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex gap-6 h-13 items-center">
+                  <button
+                    onClick={() => setActiveTab('scheduler')}
+                    className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === 'scheduler' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    Jadwal & Booking Lapangan
+                    {activeTab === 'scheduler' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('barcodes')}
+                    className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === 'barcodes' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" />
+                    Cetak QR / Barcode Lapangan
+                    {activeTab === 'barcodes' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                    )}
+                  </button>
 
-                <button
-                  onClick={() => setActiveTab('admin')}
-                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
-                    activeTab === 'admin' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-850'
-                  }`}
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  Portal Admin Keuangan
-                  {activeTab === 'admin' && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
-                  )}
-                </button>
+                  <button
+                    onClick={() => setActiveTab('admin')}
+                    className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === 'admin' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-850'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Portal Admin Keuangan
+                    {activeTab === 'admin' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Core Body Container */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
             
             {/* Database Sync Progress and Info header */}
-            {isDbLoading && (
+            {!isScanned && isDbLoading && (
               <div className="bg-emerald-50 text-emerald-800 text-xs px-4 py-3 rounded-xl border border-emerald-100 flex items-center gap-3.5 font-medium animate-pulse shadow-xs">
                 <Database className="w-4.5 h-4.5 text-emerald-600 animate-spin" />
                 <span>Sedang menyinkronkan data ketersediaan lapangan real-time dari Google Spreadsheet Anda...</span>
@@ -438,7 +459,7 @@ export default function App() {
               </div>
             )}
 
-            {!isDbLoading && !dbError && spreadsheetUrl && (
+            {!isScanned && !isDbLoading && !dbError && spreadsheetUrl && (
               <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5 text-xs text-slate-600 font-medium leading-relaxed">
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse border border-emerald-300"></span>
@@ -509,7 +530,7 @@ export default function App() {
           
           {/* Footer information */}
           <footer className="max-w-7xl mx-auto px-4 text-center mt-12 text-[11px] text-slate-400 leading-normal">
-            <p className="font-medium">Gelora Badminton Arena Booking Engine • Dikembangkan secara terintegrasi dengan Google Workspace Sheets.</p>
+            <p className="font-medium">Fazada Badminton Booking Engine • Dikembangkan secara terintegrasi dengan Google Workspace Sheets.</p>
             <p className="mt-1">Hak Cipta © {new Date().getFullYear()}. Semua Hak Dilindungi.</p>
           </footer>
 

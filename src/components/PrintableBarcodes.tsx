@@ -44,22 +44,21 @@ export default function PrintableBarcodes({ courts }: PrintableBarcodesProps) {
       </div>
 
       {/* Grid Poster Barcode Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2 print:gap-4">
-        {courts.map((court, idx) => {
+      <div className="max-w-xl mx-auto">
+        {(() => {
           // Dynamic Scan URL incorporating pre-selected Court parameters
-          const scanUrl = `${appBaseUrl}?courtId=${court.id}`;
+          const scanUrl = `${appBaseUrl}?scanned=true`;
           const qrCodeApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(scanUrl)}`;
 
           return (
             <div 
-              key={court.id}
               className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-subtle flex flex-col items-center p-8 relative print:border-slate-400 print:shadow-none print:p-6"
-              id={`poster-qr-${court.id}`}
+              id="poster-qr-unified"
             >
               {/* Branding Strip header for physical display */}
               <div className="text-center w-full mb-6 border-b border-dashed border-slate-100 pb-5">
                 <div className="text-[10px] font-bold text-emerald-600 tracking-widest uppercase mb-1">BADMINTON ARENA REGISTERED</div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">GELORA BADMINTON</h3>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">FAZADA BADMINTON</h3>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">Pindai QR ini untuk Memesan Lapangan Secara Instan</p>
               </div>
 
@@ -67,30 +66,35 @@ export default function PrintableBarcodes({ courts }: PrintableBarcodesProps) {
               <div className="relative w-64 h-64 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shadow-inner p-4 mb-5">
                 <img 
                   src={qrCodeApiUrl} 
-                  alt={`QR Code ${court.name}`} 
+                  alt="QR Code Fazada Badminton" 
                   className="w-56 h-56 object-contain"
                   referrerPolicy="no-referrer"
                 />
                 
-                {/* Court Indicator badge bottom-center */}
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white font-mono text-[10px] font-extrabold px-3 py-1 rounded-full tracking-wider border-2 border-white shadow-md">
-                  {court.id}
+                {/* Arena Indicator badge bottom-center */}
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-slate-900 text-white font-mono text-[9px] font-extrabold px-3 py-1 rounded-full tracking-wider border-2 border-white shadow-md">
+                  FAZADA ARENA
                 </div>
               </div>
 
               {/* Informative Card specifications */}
               <div className="text-center space-y-3 w-full bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex-1 flex flex-col justify-between">
                 <div>
-                  <h4 className="font-extrabold text-lg text-slate-800">{court.name}</h4>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 px-2 leading-relaxed">
-                    {court.description}
+                  <h4 className="font-extrabold text-sm text-slate-800">Pesan Lapangan 1 & 2 Fazada</h4>
+                  <p className="text-xs text-slate-500 mt-1 px-2 leading-relaxed">
+                    Sistem reservasi online mandiri. Pilih lapangan pilihan Anda, isi jadwal bermain, dan lakukan pembayaran langsung lewat smartphone Anda!
                   </p>
                 </div>
 
                 <div className="pt-3 border-t border-slate-200/60 mt-2 flex flex-col items-center gap-1.5">
-                  <div className="text-[10.5px] font-semibold text-slate-400">Tarif Sewa Jam</div>
-                  <div className="text-2xl font-black text-emerald-700 font-mono">
-                    Rp {court.pricePerHour.toLocaleString('id-ID')} <span className="text-xs font-bold text-slate-500">/ Jam</span>
+                  <div className="text-[10.5px] font-semibold text-slate-400">Tarif Sewa Lapangan</div>
+                  <div className="space-y-1 block text-left">
+                    <div className="text-xs font-semibold text-slate-700">
+                      • Jam 08.00 - 16.00: <span className="font-bold text-emerald-700 font-mono">Rp 30.000 / Jam</span>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-700">
+                      • Jam 05.00 - 23.00 (Lainnya): <span className="font-bold text-emerald-700 font-mono">Rp 40.000 / Jam</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -100,7 +104,7 @@ export default function PrintableBarcodes({ courts }: PrintableBarcodesProps) {
                 <Smartphone className="w-8 h-8 text-emerald-600 shrink-0" />
                 <div className="text-[10.5px] text-emerald-800 leading-snug">
                   <span className="font-bold block">Cara Meminang Jadwal:</span>
-                  Arahkan kamera HP Anda ke barcode di atas, klik link pendaftaran, dan pilih jam bermain Anda!
+                  Arahkan kamera HP Anda ke barcode di atas, ketuk tautan pendaftaran, pilih lapangan, jam bermain, lalu isi nama Anda!
                 </div>
               </div>
 
@@ -121,14 +125,14 @@ export default function PrintableBarcodes({ courts }: PrintableBarcodesProps) {
                   target="_blank"
                   className="text-emerald-600 hover:text-emerald-800 font-bold transition-all flex items-center gap-1 font-sans"
                 >
-                  Buka Link Demo
+                  Buka Link Demo Customer
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
 
             </div>
           );
-        })}
+        })()}
       </div>
 
       {/* Visual Guideline Hint for Admin */}

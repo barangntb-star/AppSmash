@@ -12,8 +12,26 @@ interface CourtScheduleProps {
   onBookingAdded: (newBooking: Booking) => void;
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => {
-  const startNum = i + 8; // 08:00 to 22:00
+// Dynamic pricing calculation helper
+export const getPriceForHourNum = (hour: number): number => {
+  // Rp. 30.000 / jam untuk jam 08.00 - 16.00 (hour starting from 8 up to 15)
+  if (hour >= 8 && hour < 16) {
+    return 30000;
+  }
+  // Rp. 40.000 / jam untuk jam 05.00 - 23.00 (outside 08.00 - 16.00)
+  return 40000;
+};
+
+export const calculateDurationPrice = (startHourVal: number, duration: number): number => {
+  let total = 0;
+  for (let d = 0; d < duration; d++) {
+    total += getPriceForHourNum(startHourVal + d);
+  }
+  return total;
+};
+
+const HOURS = Array.from({ length: 18 }, (_, i) => {
+  const startNum = i + 5; // 05:00 to 23:00
   const endNum = startNum + 1;
   const formatNum = (n: number) => String(n).padStart(2, '0') + ':00';
   return {
@@ -137,8 +155,8 @@ export default function CourtSchedule({
       const endHourVal = bookingSlot.startVal + durationHours;
       const endHourStr = String(endHourVal).padStart(2, '0') + ':00';
       
-      // Calculate Total Pricing
-      const totalPrice = activeCourt.pricePerHour * durationHours;
+      // Calculate Total Pricing dynamically
+      const totalPrice = calculateDurationPrice(bookingSlot.startVal, durationHours);
 
       // Generate a unique Booking ID
       const bookingId = "BK" + Math.floor(100000 + Math.random() * 900000);
@@ -208,7 +226,10 @@ export default function CourtSchedule({
               >
                 <div>
                   <div className="text-sm">{court.name}</div>
-                  <div className="text-xs text-slate-405 font-mono font-medium mt-0.5">Rp {court.pricePerHour.toLocaleString()} / jam</div>
+                  <div className="text-[11px] text-slate-500 font-medium mt-1 space-y-0.5">
+                    <span className="block font-bold text-emerald-700">Rp 30.000 <span className="text-[10px] text-slate-400 font-normal">/ jam (08:00 - 16:00)</span></span>
+                    <span className="block font-bold text-emerald-700">Rp 40.000 <span className="text-[10px] text-slate-400 font-normal">/ jam (Lega / Sore / Malam)</span></span>
+                  </div>
                 </div>
                 {selectedCourtId === court.id && (
                   <span className="bg-emerald-600 text-white p-1 rounded-full text-xs">
@@ -306,7 +327,12 @@ export default function CourtSchedule({
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold font-mono text-slate-900">{slot.start} - {slot.end}</div>
+                    <div className="text-xs font-bold font-mono text-slate-900">
+                      {slot.start} - {slot.end}
+                      <span className="ml-1.5 text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold border border-emerald-100">
+                        Rp {getPriceForHourNum(slot.startVal).toLocaleString('id-ID')}
+                      </span>
+                    </div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
                       {slot.isOccupied
                         ? `Dipesan o/ ${slot.occupierName}`
@@ -446,10 +472,10 @@ export default function CourtSchedule({
               <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 flex items-center justify-between mt-6">
                 <div>
                   <span className="text-emerald-800 text-xs font-semibold block">Total Biaya Sewa</span>
-                  <span className="text-[11px] text-emerald-600 font-mono">Rp {activeCourt.pricePerHour.toLocaleString()} x {durationHours} Jam</span>
+                  <span className="text-[11px] text-emerald-600 font-mono">Berdasarkan tarif jam sewa terpilih ({durationHours} Jam)</span>
                 </div>
                 <div className="text-right font-extrabold text-emerald-700 text-lg">
-                  Rp {(activeCourt.pricePerHour * durationHours).toLocaleString()}
+                  Rp {calculateDurationPrice(bookingSlot.startVal, durationHours).toLocaleString('id-ID')}
                 </div>
               </div>
 
