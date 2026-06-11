@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Copy, ArrowRight, ShieldCheck, Wallet, Landmark, QrCode } from 'lucide-react';
+import { X, CheckCircle, Copy, ArrowRight, ShieldCheck, Wallet, Landmark, QrCode, Phone, Download } from 'lucide-react';
 import { Booking, updateBookingStatus } from '../lib/sheetsLib';
+import { AppSettings } from '../lib/firebaseLib';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface PaymentModalProps {
   accessToken: string;
   spreadsheetId: string;
   onPaymentCompleted: (bookingId: string) => void;
+  appSettings?: AppSettings | null;
 }
 
 export default function PaymentModal({
@@ -17,7 +19,8 @@ export default function PaymentModal({
   booking,
   accessToken,
   spreadsheetId,
-  onPaymentCompleted
+  onPaymentCompleted,
+  appSettings
 }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<'qris' | 'va' | 'wallet'>('qris');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -208,18 +211,36 @@ export default function PaymentModal({
               {/* Dynamic visual interface dependent on selection */}
               <div className="mt-5 border border-slate-100 rounded-2xl p-5 bg-white flex flex-col items-center shadow-xs">
                 {paymentMethod === 'qris' && (
-                  <div className="text-center w-full">
+                  <div className="text-center w-full space-y-3">
                     {/* QR Code Title */}
-                    <p className="text-xs font-bold text-slate-700 uppercase tracking-widest mb-1.5">GELORA ARENA QRIS</p>
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">FAZADA BADMINTON QRIS</p>
                     <div className="w-44 h-44 border border-slate-200 p-2.5 bg-white rounded-xl mx-auto shadow-sm">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=pay-booking-${booking.id}`} 
+                        src={appSettings?.qrisDataUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=pay-booking-${booking.id}`} 
                         alt="QRIS Code" 
                         className="w-full h-full object-contain"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-3">
-                      Scan QRIS di atas memakai aplikasi E-Wallet (GoPay, OVO, ShopeePay) atau Mobile Banking (BCA, Mandiri) Anda.
+                    {appSettings?.qrisDataUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = appSettings.qrisDataUrl!;
+                          link.download = `QRIS_Fazada_Badminton_${booking.id}.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-100 transition-colors mx-auto cursor-pointer"
+                        title="Download Barcode QRIS"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download Barcode QRIS
+                      </button>
+                    )}
+                    <p className="text-[11px] text-slate-500">
+                      Scan QRIS di atas memakai aplikasi E-Wallet (GoPay, OVO, ShopeePay) atau Mobile Banking Anda.
                     </p>
                   </div>
                 )}
@@ -227,17 +248,17 @@ export default function PaymentModal({
                 {paymentMethod === 'va' && (
                   <div className="w-full text-left space-y-4">
                     <div>
-                      <div className="text-xs text-slate-400 mb-1">Nama Bank</div>
-                      <div className="text-sm font-semibold text-slate-800">MANDIRI VIRTUAL ACCOUNT</div>
+                      <div className="text-xs text-slate-400 mb-1">Nama Bank Penerima</div>
+                      <div className="text-sm font-semibold text-slate-800 uppercase">{appSettings?.bankName || "MANDIRI"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-400 mb-1">Nomor virtual account</div>
+                      <div className="text-xs text-slate-400 mb-1">Nomor Rekening / Virtual Account</div>
                       <div className="flex items-center justify-between bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-150 font-mono text-sm">
-                        <span className="font-bold text-slate-900">88012 08123456789</span>
+                        <span className="font-bold text-slate-900">{appSettings?.accountNumber || "88012 08123456789"}</span>
                         <button
                           type="button"
-                          onClick={() => handleCopy("8801208123456789")}
-                          className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs flex items-center gap-1"
+                          onClick={() => handleCopy(appSettings?.accountNumber?.replace(/\s+/g, '') || "8801208123456789")}
+                          className="text-emerald-600 hover:text-emerald-700 font-semibold text-xs flex items-center gap-1 cursor-pointer"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           {copiedText ? 'Tersalin' : 'Salin'}
@@ -246,9 +267,9 @@ export default function PaymentModal({
                     </div>
                     <div className="text-xs text-slate-500 leading-relaxed font-sans space-y-1 bg-slate-50/50 p-2.5 rounded-xl">
                       <p className="font-semibold text-slate-700 mb-1">Petunjuk Pembayaran:</p>
-                      <p>1. Masuk ke aplikasi m-banking ataupun ATM Mandiri.</p>
-                      <p>2. Pilih menu "Bayar/Beli" &gt; "Multi Payment" / "Virtual Account".</p>
-                      <p>3. Tempelkan nomor virtual di atas dan konfirmasi nama rekening.</p>
+                      <p>1. Lakukan transfer atau pembayaran online ke rekening bank di atas.</p>
+                      <p>2. Kirim nominal pas sebesar <span className="font-bold text-slate-900">Rp {booking.totalPrice.toLocaleString()}</span>.</p>
+                      <p>3. Simpan struk / bukti transfer dan klik Konfirmasi Bayar di bawah.</p>
                     </div>
                   </div>
                 )}
@@ -298,6 +319,19 @@ export default function PaymentModal({
               <p className="text-[10px] text-slate-400 text-center mt-2.5">
                 🔒 Pembayaran diproses dengan enkripsi 256-bit aman dan bersinkronisasi ke Google Drive Sheet.
               </p>
+              {appSettings?.adminPhone && (
+                <div className="mt-3.5 pt-2 border-t border-slate-100 flex justify-center">
+                  <a
+                    href={`https://wa.me/${appSettings.adminPhone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-emerald-700 font-medium transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                    Butuh Bantuan? Chat WhatsApp Admin ({appSettings.adminPhone})
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}

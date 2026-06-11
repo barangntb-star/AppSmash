@@ -12,6 +12,18 @@
       },
       "required": ["spreadsheetId"]
     },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "General settings for banking, admin phone, and QRIS barcode",
+      "type": "object",
+      "properties": {
+        "accountNumber": { "type": "string" },
+        "bankName": { "type": "string" },
+        "adminPhone": { "type": "string" },
+        "qrisDataUrl": { "type": "string" }
+      },
+      "required": ["accountNumber", "bankName", "adminPhone"]
+    },
     "Booking": {
       "title": "Booking",
       "description": "Court booking record",
@@ -51,9 +63,13 @@
     }
   },
   "firestore": {
-    "configs/{configId}": {
+    "configs/sheets": {
       "schema": "SheetsConfig",
-      "description": "Configuration collection"
+      "description": "Google Sheets linking configuration"
+    },
+    "configs/settings": {
+      "schema": "AppSettings",
+      "description": "General application settings"
     },
     "bookings/{bookingId}": {
       "schema": "Booking",

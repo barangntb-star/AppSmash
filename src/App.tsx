@@ -15,7 +15,9 @@ import {
   updateFirestoreTransactionSynced,
   auth,
   subscribeFirestoreBookings,
-  subscribeFirestoreTransactions
+  subscribeFirestoreTransactions,
+  getAppSettings,
+  AppSettings
 } from './lib/firebaseLib';
 import { 
   findOrCreateSpreadsheet, 
@@ -34,6 +36,7 @@ import PaymentModal from './components/PaymentModal';
 import QrScannerModal from './components/QrScannerModal';
 import PrintableBarcodes from './components/PrintableBarcodes';
 import AdminFinancialPortal from './components/AdminFinancialPortal';
+import AppSettingsTab from './components/AppSettingsTab';
 import { 
   Database, 
   LogOut, 
@@ -48,7 +51,8 @@ import {
   ChevronRight,
   ShieldCheck,
   CheckCircle,
-  Clock
+  Clock,
+  Settings
 } from 'lucide-react';
 
 export default function App() {
@@ -61,6 +65,7 @@ export default function App() {
 
   // Database Spreadsheet state
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [isDbLoading, setIsDbLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -202,12 +207,18 @@ export default function App() {
       setIsDbLoading(true);
       setDbError(null);
       try {
-        const savedSheetId = await getSavedSpreadsheetId();
+        const [savedSheetId, savedSettings] = await Promise.all([
+          getSavedSpreadsheetId(),
+          getAppSettings()
+        ]);
         if (savedSheetId) {
           setSpreadsheetId(savedSheetId);
         }
+        if (savedSettings) {
+          setAppSettings(savedSettings);
+        }
       } catch (err) {
-        console.error("Gagal memuat konfigurasi spreadsheet:", err);
+        console.error("Gagal memuat konfigurasi dasar:", err);
       } finally {
         setIsDbLoading(false);
       }
@@ -467,8 +478,22 @@ export default function App() {
               {/* Account card and logout */}
               <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
                 {isScanned ? (
-                  <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-700">
-                    Mode Penyewa Aktif
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-700">
+                      Mode Penyewa Aktif
+                    </div>
+                    <button
+                      onClick={() => {
+                        alert("Terima kasih anda telah menggunakan Fazada Badminton");
+                        setIsScanned(false);
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                      }}
+                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold border border-rose-100 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Keluar dari Portal Penyewa"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Keluar
+                    </button>
                   </div>
                 ) : user ? (
                   <>
@@ -553,6 +578,19 @@ export default function App() {
                   <TrendingUp className="w-4 h-4" />
                   Portal Admin Keuangan
                   {activeTab === 'admin' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'settings' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-850'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Pengaturan
+                  {activeTab === 'settings' && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
                   )}
                 </button>
@@ -650,6 +688,12 @@ export default function App() {
             </section>
           )}
 
+          {user && activeTab === 'settings' && (
+            <section className="animate-fade-in">
+              <AppSettingsTab onSettingsSaved={(settings) => setAppSettings(settings)} />
+            </section>
+          )}
+
         </main>
         
         {/* Footer information */}
@@ -675,6 +719,7 @@ export default function App() {
         accessToken={token || ""}
         spreadsheetId={spreadsheetId || ""}
         onPaymentCompleted={handlePaymentCompleted}
+        appSettings={appSettings}
       />
 
     </div>

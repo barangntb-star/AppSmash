@@ -263,6 +263,35 @@ export const updateFirestoreTransactionSynced = async (
   }
 };
 
+export interface AppSettings {
+  accountNumber: string;
+  bankName: string;
+  adminPhone: string;
+  qrisDataUrl?: string;
+}
+
+export const getAppSettings = async (): Promise<AppSettings | null> => {
+  try {
+    const sDoc = await getDoc(doc(db, 'configs', 'settings'));
+    if (sDoc.exists()) {
+      return sDoc.data() as AppSettings;
+    }
+  } catch (error) {
+    console.error("Failed to fetch AppSettings from Firestore:", error);
+  }
+  return null;
+};
+
+export const saveAppSettings = async (settings: AppSettings): Promise<void> => {
+  try {
+    await setDoc(doc(db, 'configs', 'settings'), settings);
+    console.log("Successfully saved general settings to Firestore");
+  } catch (error) {
+    console.error("Failed to save AppSettings to Firestore:", error);
+    throw error;
+  }
+};
+
 // 4. Real-time Subscription Helpers with standardized error handling
 export const subscribeFirestoreBookings = (
   onUpdate: (bookings: Booking[]) => void,
