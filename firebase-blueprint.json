@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "SheetsConfig": {
+      "title": "SheetsConfig",
+      "description": "Configuration for Google Sheets linkage",
+      "type": "object",
+      "properties": {
+        "spreadsheetId": { "type": "string" },
+        "ownerUserId": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["spreadsheetId"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Court booking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courtId": { "type": "string" },
+        "courtName": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "bookingDate": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["Menunggu Pembayaran", "Lunas"] },
+        "createdAt": { "type": "string" },
+        "synced": { "type": "boolean" }
+      },
+      "required": ["id", "courtId", "customerName", "bookingDate", "startTime", "endTime", "totalPrice"]
+    },
+    "FinancialTransaction": {
+      "title": "FinancialTransaction",
+      "description": "A financial transaction for court cashflow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string", "enum": ["Masuk", "Keluar"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "synced": { "type": "boolean" }
+      },
+      "required": ["id", "date", "type", "amount", "category"]
+    }
+  },
+  "firestore": {
+    "configs/{configId}": {
+      "schema": "SheetsConfig",
+      "description": "Configuration collection"
+    },
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Bookings collection"
+    },
+    "transactions/{transactionId}": {
+      "schema": "FinancialTransaction",
+      "description": "Financial Transactions collection"
+    }
+  }
+}

@@ -19,6 +19,7 @@ export interface Booking {
   paymentMethod: string;
   paymentStatus: 'Menunggu Pembayaran' | 'Lunas';
   createdAt: string;
+  synced?: boolean;
 }
 
 export interface FinancialTransaction {
@@ -29,6 +30,7 @@ export interface FinancialTransaction {
   category: string;
   description: string;
   createdAt: string;
+  synced?: boolean;
 }
 
 const DATABASE_FILE_NAME = "Database Penyewaan Lapangan Bulu Tangkis";

@@ -1,15 +1,13 @@
 import React, { useState, useMemo, FormEvent } from 'react';
 import { Calendar as CalendarIcon, Clock, User, Phone, Check, CreditCard, AlertCircle, QrCode, X } from 'lucide-react';
-import { Court, Booking, addBooking } from '../lib/sheetsLib';
+import { Court, Booking } from '../lib/sheetsLib';
 
 interface CourtScheduleProps {
   courts: Court[];
   bookings: Booking[];
   selectedCourtId: string;
   onCourtChange: (id: string) => void;
-  accessToken: string;
-  spreadsheetId: string;
-  onBookingAdded: (newBooking: Booking) => void;
+  onBookingAdded: (newBooking: Booking) => void | Promise<void>;
 }
 
 // Dynamic pricing calculation helper
@@ -47,8 +45,6 @@ export default function CourtSchedule({
   bookings,
   selectedCourtId,
   onCourtChange,
-  accessToken,
-  spreadsheetId,
   onBookingAdded
 }: CourtScheduleProps) {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -176,10 +172,9 @@ export default function CourtSchedule({
         createdAt: new Date().toISOString(),
       };
 
-      // Append record in Google Spreadsheet via Sheets API
-      await addBooking(accessToken, spreadsheetId, newBooking);
+      // Persist the booking using unified callback
+      await onBookingAdded(newBooking);
 
-      onBookingAdded(newBooking);
       setBookingSlot(null); // Clear form
     } catch (err: any) {
       console.error(err);

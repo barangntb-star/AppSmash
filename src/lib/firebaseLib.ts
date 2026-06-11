@@ -1,9 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc,
+  query,
+  orderBy
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { Booking, FinancialTransaction } from './sheetsLib';
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 // Request Google Sheet and Drive file scopes
@@ -63,3 +76,125 @@ export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
 };
+
+// --- Firestore Helpers ---
+
+// 1. Spreadsheet Config helpers
+export const saveSpreadsheetId = async (spreadsheetId: string, ownerEmail: string, ownerUserId: string) => {
+  try {
+    await setDoc(doc(db, 'configs', 'sheets'), {
+      spreadsheetId,
+      ownerEmail,
+      ownerUserId,
+      updatedAt: new Date().toISOString()
+    });
+    console.log("Successfully saved spreadsheet ID to Firestore:", spreadsheetId);
+  } catch (error) {
+    console.error("Failed to save spreadsheetId to Firestore:", error);
+  }
+};
+
+export const getSavedSpreadsheetId = async (): Promise<string | null> => {
+  try {
+    const sDoc = await getDoc(doc(db, 'configs', 'sheets'));
+    if (sDoc.exists()) {
+      return sDoc.data().spreadsheetId || null;
+    }
+  } catch (error) {
+    console.error("Failed to fetch spreadsheetId from Firestore:", error);
+  }
+  return null;
+};
+
+// 2. Bookings helpers
+export const getFirestoreBookings = async (): Promise<Booking[]> => {
+  try {
+    const q = query(collection(db, 'bookings'), orderBy('createdAt', 'desc'));
+    const s = await getDocs(q);
+    const bookingsList: Booking[] = [];
+    s.forEach((d) => {
+      bookingsList.push(d.data() as Booking);
+    });
+    return bookingsList;
+  } catch (error) {
+    console.error("Failed to fetch bookings from Firestore:", error);
+    return [];
+  }
+};
+
+export const saveFirestoreBooking = async (booking: Booking): Promise<void> => {
+  try {
+    await setDoc(doc(db, 'bookings', booking.id), booking);
+    console.log("Successfully saved booking to Firestore:", booking.id);
+  } catch (error) {
+    console.error("Failed to save booking to Firestore:", error);
+    throw error;
+  }
+};
+
+export const updateFirestoreBookingStatus = async (
+  bookingId: string,
+  paymentStatus: 'Menunggu Pembayaran' | 'Lunas'
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, 'bookings', bookingId), { paymentStatus });
+    console.log("Successfully updated booking payment status in Firestore:", bookingId);
+  } catch (error) {
+    console.error("Failed to update booking status in Firestore:", error);
+    throw error;
+  }
+};
+
+export const updateFirestoreBookingSynced = async (
+  bookingId: string,
+  synced: boolean
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, 'bookings', bookingId), { synced });
+    console.log("Successfully updated booking sync status in Firestore:", bookingId);
+  } catch (error) {
+    console.error("Failed to update booking sync status in Firestore:", error);
+    throw error;
+  }
+};
+
+// 3. Transactions helpers
+export const getFirestoreTransactions = async (): Promise<FinancialTransaction[]> => {
+  try {
+    const q = query(collection(db, 'transactions'), orderBy('createdAt', 'desc'));
+    const s = await getDocs(q);
+    const txList: FinancialTransaction[] = [];
+    s.forEach((d) => {
+      txList.push(d.data() as FinancialTransaction);
+    });
+    return txList;
+  } catch (error) {
+    console.error("Failed to fetch transactions from Firestore:", error);
+    return [];
+  }
+};
+
+export const saveFirestoreTransaction = async (tx: FinancialTransaction): Promise<void> => {
+  try {
+    await setDoc(doc(db, 'transactions', tx.id), tx);
+    console.log("Successfully saved transaction to Firestore:", tx.id);
+  } catch (error) {
+    console.error("Failed to save transaction to Firestore:", error);
+    throw error;
+  }
+};
+
+export const updateFirestoreTransactionSynced = async (
+  txId: string,
+  synced: boolean
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, 'transactions', txId), { synced });
+    console.log("Successfully updated transaction sync status in Firestore:", txId);
+  } catch (error) {
+    console.error("Failed to update transaction sync status in Firestore:", error);
+    throw error;
+  }
+};
+
+

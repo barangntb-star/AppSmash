@@ -15,14 +15,14 @@ import {
   BadgeCheck, 
   Loader2 
 } from 'lucide-react';
-import { Booking, FinancialTransaction, addTransaction } from '../lib/sheetsLib';
+import { Booking, FinancialTransaction } from '../lib/sheetsLib';
 
 interface AdminFinancialPortalProps {
   bookings: Booking[];
   transactions: FinancialTransaction[];
-  accessToken: string;
-  spreadsheetId: string;
-  onTransactionAdded: (newTx: FinancialTransaction) => void;
+  accessToken?: string | null;
+  spreadsheetId?: string | null;
+  onTransactionAdded: (newTx: FinancialTransaction) => void | Promise<void>;
   onRefreshAll: () => Promise<void>;
 }
 
@@ -160,13 +160,12 @@ export default function AdminFinancialPortal({
         createdAt: new Date().toISOString()
       };
 
-      await addTransaction(accessToken, spreadsheetId, newTx);
-      onTransactionAdded(newTx);
+      await onTransactionAdded(newTx);
       
       // Reset input fields
       setTxAmount('');
       setTxDescription('');
-      alert(`Transaksi ${txType === 'Masuk' ? 'Pemasukan' : 'Pengeluaran'} berhasil dicatat di Google Sheets!`);
+      alert(`Transaksi ${txType === 'Masuk' ? 'Pemasukan' : 'Pengeluaran'} berhasil dicatat di sistem!`);
     } catch (err: any) {
       console.error(err);
       alert(`Gagal mencatat transaksi: ${err.message}`);

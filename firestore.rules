@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Config collection - Stores spreadsheet ID
+    match /configs/{configId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Bookings collection - Public can read and create bookings (rentals)
+    match /bookings/{bookingId} {
+      allow read, write: if true;
+    }
+
+    // Transactions collection - Only Admin can access financial transactions
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
