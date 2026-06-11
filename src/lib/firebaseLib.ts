@@ -10,7 +10,8 @@ import {
   updateDoc,
   query,
   orderBy,
-  getDocFromServer
+  getDocFromServer,
+  onSnapshot
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Booking, FinancialTransaction } from './sheetsLib';
@@ -260,6 +261,43 @@ export const updateFirestoreTransactionSynced = async (
     console.error("Failed to update transaction sync status in Firestore:", error);
     throw error;
   }
+};
+
+// 4. Real-time Subscription Helpers with standardized error handling
+export const subscribeFirestoreBookings = (
+  onUpdate: (bookings: Booking[]) => void,
+  onError?: (error: any) => void
+) => {
+  const path = 'bookings';
+  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const bookingsList: Booking[] = [];
+    snapshot.forEach((d) => {
+      bookingsList.push(d.data() as Booking);
+    });
+    onUpdate(bookingsList);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, path);
+    if (onError) onError(error);
+  });
+};
+
+export const subscribeFirestoreTransactions = (
+  onUpdate: (transactions: FinancialTransaction[]) => void,
+  onError?: (error: any) => void
+) => {
+  const path = 'transactions';
+  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const txList: FinancialTransaction[] = [];
+    snapshot.forEach((d) => {
+      txList.push(d.data() as FinancialTransaction);
+    });
+    onUpdate(txList);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, path);
+    if (onError) onError(error);
+  });
 };
 
 

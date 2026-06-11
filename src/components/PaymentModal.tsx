@@ -58,8 +58,12 @@ export default function PaymentModal({
   const handleProcessPayment = async () => {
     setIsProcessing(true);
     try {
-      // Direct updates in Google sheets to mark booking as Paid ('Lunas')
-      await updateBookingStatus(accessToken, spreadsheetId, booking.id, 'Lunas');
+      if (accessToken && spreadsheetId) {
+        // Direct updates in Google sheets to mark booking as Paid ('Lunas')
+        await updateBookingStatus(accessToken, spreadsheetId, booking.id, 'Lunas');
+      } else {
+        console.log("Visitor/non-admin session: skipping direct Google Sheets update.");
+      }
       
       // Artificial delay for luxurious micro-loader experience
       setTimeout(() => {
@@ -69,7 +73,7 @@ export default function PaymentModal({
       }, 1500);
     } catch (err: any) {
       console.error(err);
-      alert(`Ups! Terjadi kesalahan saat memperbarui database Google Sheets: ${err.message}`);
+      alert(`Ups! Terjadi kesalahan saat memperbarui database: ${err.message}`);
       setIsProcessing(false);
     }
   };

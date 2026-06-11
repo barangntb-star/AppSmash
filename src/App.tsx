@@ -13,7 +13,9 @@ import {
   saveFirestoreTransaction,
   updateFirestoreBookingSynced,
   updateFirestoreTransactionSynced,
-  auth
+  auth,
+  subscribeFirestoreBookings,
+  subscribeFirestoreTransactions
 } from './lib/firebaseLib';
 import { 
   findOrCreateSpreadsheet, 
@@ -21,7 +23,10 @@ import {
   addTransaction,
   Court, 
   Booking,
-  FinancialTransaction
+  FinancialTransaction,
+  readBookings,
+  updateBookingStatus,
+  readTransactions
 } from './lib/sheetsLib';
 import CourtSchedule from './components/CourtSchedule';
 import BookingList from './components/BookingList';
@@ -113,20 +118,35 @@ export default function App() {
   const [payBooking, setPayBooking] = useState<Booking | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  // Background Google Sheets sync runner
+  // Background Google Sheets sync runner (prevents duplicates and syncs payments matching Firestore)
   const syncDatabaseDraftsToSheets = async (activeToken: string, activeSheetId: string) => {
     try {
       console.log("Starting background Google Sheets sync...");
       // 1. Fetch live bookings from Firestore (which may contain fresh guest bookings)
       const firestoreBookings = await getFirestoreBookings();
-      const unsyncedBookings = firestoreBookings.filter(b => !b.synced);
       
-      for (const booking of unsyncedBookings) {
+      // Load current bookings from Google Sheets to inspect and avoid duplicate rows
+      const sheetBookings = await readBookings(activeToken, activeSheetId).catch(() => []);
+      const sheetBookingIds = new Set(sheetBookings.map(b => b.id));
+
+      for (const booking of firestoreBookings) {
         try {
-          await addBooking(activeToken, activeSheetId, booking);
-          await updateFirestoreBookingSynced(booking.id, true);
-          // Update current state
-          setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, synced: true } : b));
+          if (!sheetBookingIds.has(booking.id)) {
+            // New booking from guest, append it!
+            await addBooking(activeToken, activeSheetId, booking);
+          } else {
+            // Booking already in sheet, verify if paymentStatus needs an update
+            const sheetBooking = sheetBookings.find(sb => sb.id === booking.id);
+            if (sheetBooking && sheetBooking.paymentStatus !== booking.paymentStatus) {
+              await updateBookingStatus(activeToken, activeSheetId, booking.id, booking.paymentStatus);
+            }
+          }
+
+          if (!booking.synced) {
+            await updateFirestoreBookingSynced(booking.id, true);
+            // Update local state
+            setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, synced: true } : b));
+          }
         } catch (err) {
           console.error("Gagal sinkronisasi booking ke Google Sheets:", booking.id, err);
         }
@@ -134,14 +154,19 @@ export default function App() {
 
       // 2. Fetch live transactions from Firestore
       const firestoreTx = await getFirestoreTransactions();
-      const unsyncedTx = firestoreTx.filter(t => !t.synced);
+      const sheetTx = await readTransactions(activeToken, activeSheetId).catch(() => []);
+      const sheetTxIds = new Set(sheetTx.map(t => t.id));
 
-      for (const tx of unsyncedTx) {
+      for (const tx of firestoreTx) {
         try {
-          await addTransaction(activeToken, activeSheetId, tx);
-          await updateFirestoreTransactionSynced(tx.id, true);
-          // Update current state
-          setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, synced: true } : t));
+          if (!sheetTxIds.has(tx.id)) {
+            await addTransaction(activeToken, activeSheetId, tx);
+          }
+          if (!tx.synced) {
+            await updateFirestoreTransactionSynced(tx.id, true);
+            // Update local state
+            setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, synced: true } : t));
+          }
         } catch (err) {
           console.error("Gagal sinkronisasi transaksi ke Google Sheets:", tx.id, err);
         }
@@ -168,36 +193,48 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Load Firestore data for visitors on initial mount
+  // Load configurations and listen to bookings in real-time
   useEffect(() => {
-    const loadVisitorData = async () => {
+    setCourts(defaultCourts);
+    setSelectedCourtId(defaultCourts[0].id);
+
+    const loadSpreadsheetConfig = async () => {
       setIsDbLoading(true);
       setDbError(null);
       try {
-        setCourts(defaultCourts);
-        setSelectedCourtId(defaultCourts[0].id);
-
-        const [savedSheetId, firestoreBookings] = await Promise.all([
-          getSavedSpreadsheetId(),
-          getFirestoreBookings()
-        ]);
-
+        const savedSheetId = await getSavedSpreadsheetId();
         if (savedSheetId) {
           setSpreadsheetId(savedSheetId);
         }
-        setBookings(firestoreBookings);
-      } catch (err: any) {
-        console.error("Gagal memuat database Firestore:", err);
+      } catch (err) {
+        console.error("Gagal memuat konfigurasi spreadsheet:", err);
       } finally {
         setIsDbLoading(false);
       }
     };
-    loadVisitorData();
+
+    loadSpreadsheetConfig();
+
+    // Subscribe to bookings collection in real-time
+    const unsubscribeBookings = subscribeFirestoreBookings(
+      (realtimeBookings) => {
+        setBookings(realtimeBookings);
+      },
+      (err) => {
+        console.error("Gagal sinkronisasi data online bookings:", err);
+      }
+    );
+
+    return () => {
+      unsubscribeBookings();
+    };
   }, []);
 
   // When token is fetched, initialize Google Sheets database and trigger sync
   useEffect(() => {
     if (!token) return;
+
+    let unsubscribeTransactions: (() => void) | null = null;
 
     const setupOwnerSession = async () => {
       setIsDbLoading(true);
@@ -212,9 +249,15 @@ export default function App() {
         }
         setSpreadsheetId(sheetId);
 
-        // Fetch transactions (requires admin auth)
-        const firestoreTransactions = await getFirestoreTransactions();
-        setTransactions(firestoreTransactions);
+        // Real-time listener for financial transactions
+        unsubscribeTransactions = subscribeFirestoreTransactions(
+          (realtimeTransactions) => {
+            setTransactions(realtimeTransactions);
+          },
+          (err) => {
+            console.error("Gagal sinkronisasi transaksi online:", err);
+          }
+        );
 
         // Run background synchronization of draft entries
         await syncDatabaseDraftsToSheets(token, sheetId);
@@ -231,6 +274,12 @@ export default function App() {
     };
 
     setupOwnerSession();
+
+    return () => {
+      if (unsubscribeTransactions) {
+        unsubscribeTransactions();
+      }
+    };
   }, [token, user]);
 
   const handleLogin = async () => {
