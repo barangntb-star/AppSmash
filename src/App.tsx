@@ -9,13 +9,17 @@ import {
   findOrCreateSpreadsheet, 
   readCourts, 
   readBookings, 
+  readTransactions,
   Court, 
-  Booking 
+  Booking,
+  FinancialTransaction
 } from './lib/sheetsLib';
 import CourtSchedule from './components/CourtSchedule';
 import BookingList from './components/BookingList';
 import PaymentModal from './components/PaymentModal';
 import QrScannerModal from './components/QrScannerModal';
+import PrintableBarcodes from './components/PrintableBarcodes';
+import AdminFinancialPortal from './components/AdminFinancialPortal';
 import { 
   Database, 
   LogOut, 
@@ -49,7 +53,26 @@ export default function App() {
   // App core state
   const [courts, setCourts] = useState<Court[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string>('CT001');
+  const [activeTab, setActiveTab] = useState<'scheduler' | 'barcodes' | 'admin'>('scheduler');
+
+  // Synchronise deep-linking QR barcodes parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const courtIdParam = params.get('courtId');
+    if (courtIdParam) {
+      setSelectedCourtId(courtIdParam);
+      setActiveTab('scheduler');
+      // Scroll to scheduler section
+      setTimeout(() => {
+        const schedBlock = document.getElementById('scheduler-section');
+        if (schedBlock) {
+          schedBlock.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, []);
 
   // Modals visibility state
   const [payBooking, setPayBooking] = useState<Booking | null>(null);
@@ -83,18 +106,20 @@ export default function App() {
         const sheetId = await findOrCreateSpreadsheet(token);
         setSpreadsheetId(sheetId);
 
-        // Fetch courts and bookings in parallel
-        const [fetchedCourts, fetchedBookings] = await Promise.all([
+        // Fetch courts, bookings and transactions in parallel
+        const [fetchedCourts, fetchedBookings, fetchedTransactions] = await Promise.all([
           readCourts(token, sheetId),
-          readBookings(token, sheetId)
+          readBookings(token, sheetId),
+          readTransactions(token, sheetId)
         ]);
 
         // Capped to at most 2 courts (Lapangan A & B)
         const cappedCourts = fetchedCourts.slice(0, 2);
         setCourts(cappedCourts);
         setBookings(fetchedBookings);
+        setTransactions(fetchedTransactions);
         if (cappedCourts.length > 0) {
-          setSelectedCourtId(fetchedCourts[0].id);
+          setSelectedCourtId(cappedCourts[0].id);
         }
       } catch (err: any) {
         console.error("Database setup error:", err);
@@ -145,6 +170,7 @@ export default function App() {
       setSpreadsheetId(null);
       setCourts([]);
       setBookings([]);
+      setTransactions([]);
       setNeedsAuth(true);
     }
   };
@@ -153,13 +179,15 @@ export default function App() {
     if (!token || !spreadsheetId) return;
     setIsDbLoading(true);
     try {
-      const [fetchedCourts, fetchedBookings] = await Promise.all([
+      const [fetchedCourts, fetchedBookings, fetchedTransactions] = await Promise.all([
         readCourts(token, spreadsheetId),
-        readBookings(token, spreadsheetId)
+        readBookings(token, spreadsheetId),
+        readTransactions(token, spreadsheetId)
       ]);
       // Capped to at most 2 courts (Lapangan A & B)
       setCourts(fetchedCourts.slice(0, 2));
       setBookings(fetchedBookings);
+      setTransactions(fetchedTransactions);
     } catch (err: any) {
       console.error("Failed to refresh data:", err);
       alert(`Gagal syncing: ${err.message}`);
@@ -338,6 +366,52 @@ export default function App() {
             </div>
           </header>
 
+          {/* Tab Navigation Subheader */}
+          <div className="bg-white border-b border-slate-100 sticky top-18 z-20 shadow-xs print:hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex gap-6 h-13 items-center">
+                <button
+                  onClick={() => setActiveTab('scheduler')}
+                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'scheduler' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  Jadwal & Booking Lapangan
+                  {activeTab === 'scheduler' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab('barcodes')}
+                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'barcodes' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <QrCode className="w-4 h-4" />
+                  Cetak QR / Barcode Lapangan
+                  {activeTab === 'barcodes' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'admin' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-850'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Portal Admin Keuangan
+                  {activeTab === 'admin' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Core Body Container */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
             
@@ -384,29 +458,52 @@ export default function App() {
 
             {/* Quick overview of court badges removed per user instruction to clean court info details */}
 
-            {/* Scheduler & Booking Form Section */}
-            <section id="scheduler-section" className="scroll-mt-24">
-              <CourtSchedule
-                courts={courts}
-                bookings={bookings}
-                selectedCourtId={selectedCourtId}
-                onCourtChange={setSelectedCourtId}
-                accessToken={token || ""}
-                spreadsheetId={spreadsheetId || ""}
-                onBookingAdded={handleBookingAdded}
-              />
-            </section>
+            {activeTab === 'scheduler' && (
+              <>
+                {/* Scheduler & Booking Form Section */}
+                <section id="scheduler-section" className="scroll-mt-24">
+                  <CourtSchedule
+                    courts={courts}
+                    bookings={bookings}
+                    selectedCourtId={selectedCourtId}
+                    onCourtChange={setSelectedCourtId}
+                    accessToken={token || ""}
+                    spreadsheetId={spreadsheetId || ""}
+                    onBookingAdded={handleBookingAdded}
+                  />
+                </section>
 
-            {/* Ledger list section */}
-            <section>
-              <BookingList
-                bookings={bookings}
-                onPayNow={setPayBooking}
-                onRefresh={refreshData}
-                isRefreshing={isDbLoading}
-                spreadsheetUrl={spreadsheetUrl}
-              />
-            </section>
+                {/* Ledger list section */}
+                <section className="scroll-mt-24">
+                  <BookingList
+                    bookings={bookings}
+                    onPayNow={setPayBooking}
+                    onRefresh={refreshData}
+                    isRefreshing={isDbLoading}
+                    spreadsheetUrl={spreadsheetUrl}
+                  />
+                </section>
+              </>
+            )}
+
+            {activeTab === 'barcodes' && (
+              <section className="animate-fade-in">
+                <PrintableBarcodes courts={courts} />
+              </section>
+            )}
+
+            {activeTab === 'admin' && (
+              <section className="animate-fade-in">
+                <AdminFinancialPortal
+                  bookings={bookings}
+                  transactions={transactions}
+                  accessToken={token || ""}
+                  spreadsheetId={spreadsheetId || ""}
+                  onTransactionAdded={(newTx) => setTransactions(prev => [newTx, ...prev])}
+                  onRefreshAll={refreshData}
+                />
+              </section>
+            )}
 
           </main>
           

@@ -21,6 +21,16 @@ export interface Booking {
   createdAt: string;
 }
 
+export interface FinancialTransaction {
+  id: string;
+  date: string; // Format: YYYY-MM-DD
+  type: 'Masuk' | 'Keluar';
+  amount: number;
+  category: string;
+  description: string;
+  createdAt: string;
+}
+
 const DATABASE_FILE_NAME = "Database Penyewaan Lapangan Bulu Tangkis";
 
 // Finds our database spreadsheet in user's Drive. If not found, creates and initializes a new one.
@@ -62,6 +72,9 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
           },
           {
             properties: { title: 'Bookings' },
+          },
+          {
+            properties: { title: 'Transactions' },
           },
         ],
       }),
@@ -117,6 +130,25 @@ export const findOrCreateSpreadsheet = async (accessToken: string): Promise<stri
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ values: bookingsValues }),
+    });
+
+    // 5. Populate default Transactions headers and seed columns
+    const txRange = 'Transactions!A1:G5';
+    const txValues = [
+      ["Transaction ID", "Date", "Type", "Amount (IDR)", "Category", "Description", "Created At"],
+      ["TX1001", todayStr, "Keluar", 75000, "Shuttlecock", "Pembelian 1 slop Shuttlecock JP Gold untuk kas lapangan", new Date().toISOString()],
+      ["TX1002", todayStr, "Masuk", 45000, "Kantin", "Penjualan air mineral botol dan minuman dingin kantin", new Date().toISOString()],
+      ["TX1003", todayStr, "Keluar", 50000, "Kebersihan", "Membayar upah kebersihan harian gedung lap. bulutangkis", new Date().toISOString()]
+    ];
+
+    const txUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${txRange}?valueInputOption=USER_ENTERED`;
+    await fetch(txUpdateUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: txValues }),
     });
 
     return spreadsheetId;
@@ -269,6 +301,126 @@ export const updateBookingStatus = async (
 
   if (!updateRes.ok) {
     throw new Error(`Failed to update cell: ${await updateRes.text()}`);
+  }
+
+  return true;
+};
+
+// Ensures the 'Transactions' sheet exists inside existing spreadsheets (failsafe)
+export const ensureTransactionsSheet = async (accessToken: string, spreadsheetId: string): Promise<void> => {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Transactions!A1:G1`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (res.ok) {
+      return; // Already exists!
+    }
+
+    // Otherwise, append the sheet
+    const batchUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
+    const addSheetRes = await fetch(batchUpdateUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            addSheet: {
+              properties: { title: 'Transactions' }
+            }
+          }
+        ]
+      }),
+    });
+
+    if (!addSheetRes.ok) {
+      console.warn("Failed to add Transactions sheet via batchUpdate, using local storage fallback");
+      return;
+    }
+
+    // Set header row
+    const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Transactions!A1:G1?valueInputOption=USER_ENTERED`;
+    await fetch(updateUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        values: [["Transaction ID", "Date", "Type", "Amount (IDR)", "Category", "Description", "Created At"]]
+      }),
+    });
+  } catch (error) {
+    console.warn(" Failsafe ensureTransactionsSheet error. This is fine.", error);
+  }
+};
+
+// Reads financial transactions from Google Sheets
+export const readTransactions = async (accessToken: string, spreadsheetId: string): Promise<FinancialTransaction[]> => {
+  await ensureTransactionsSheet(accessToken, spreadsheetId);
+  
+  const range = 'Transactions!A2:G1000';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to read transactions: ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  const rows = data.values || [];
+
+  return rows.map((row: any) => ({
+    id: row[0] || "",
+    date: row[1] || "",
+    type: (row[2] || "Masuk") as 'Masuk' | 'Keluar',
+    amount: Number(row[3]) || 0,
+    category: row[4] || "",
+    description: row[5] || "",
+    createdAt: row[6] || "",
+  })).filter((t: FinancialTransaction) => t.id !== "");
+};
+
+// Appends a new financial transaction to Google Sheets
+export const addTransaction = async (
+  accessToken: string,
+  spreadsheetId: string,
+  tx: FinancialTransaction
+): Promise<boolean> => {
+  await ensureTransactionsSheet(accessToken, spreadsheetId);
+
+  const range = 'Transactions!A:G';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED`;
+
+  const values = [
+    [
+      tx.id,
+      tx.date,
+      tx.type,
+      tx.amount,
+      tx.category,
+      tx.description,
+      tx.createdAt
+    ]
+  ];
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ values }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to add transaction: ${await res.text()}`);
   }
 
   return true;
