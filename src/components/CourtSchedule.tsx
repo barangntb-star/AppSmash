@@ -1,6 +1,7 @@
 import React, { useState, useMemo, FormEvent } from 'react';
-import { Calendar as CalendarIcon, Clock, User, Phone, Check, CreditCard, AlertCircle, QrCode, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Phone, Check, CreditCard, AlertCircle, QrCode, X, Sparkles } from 'lucide-react';
 import { Court, Booking } from '../lib/sheetsLib';
+import { Member } from '../lib/firebaseLib';
 
 interface CourtScheduleProps {
   courts: Court[];
@@ -8,6 +9,7 @@ interface CourtScheduleProps {
   selectedCourtId: string;
   onCourtChange: (id: string) => void;
   onBookingAdded: (newBooking: Booking) => void | Promise<void>;
+  members?: Member[];
 }
 
 // Dynamic pricing calculation helper
@@ -45,7 +47,8 @@ export default function CourtSchedule({
   bookings,
   selectedCourtId,
   onCourtChange,
-  onBookingAdded
+  onBookingAdded,
+  members = []
 }: CourtScheduleProps) {
   const [selectedDate, setSelectedDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
@@ -58,6 +61,23 @@ export default function CourtSchedule({
   const [durationHours, setDurationHours] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showCourtQr, setShowCourtQr] = useState(false);
+
+  // Dynamic membership verification and calculations
+  const currentMember = useMemo(() => {
+    const cleanNum = custPhone.trim().replace(/[^0-9]/g, '');
+    if (!cleanNum || !members) return null;
+    return members.find(m => m.phone.replace(/[^0-9]/g, '') === cleanNum) || null;
+  }, [custPhone, members]);
+
+  const finalPrice = useMemo(() => {
+    if (!bookingSlot) return 0;
+    const standardPrice = calculateDurationPrice(bookingSlot.startVal, durationHours);
+    if (currentMember) {
+      const discount = durationHours * 10000;
+      return Math.max(0, standardPrice - discount);
+    }
+    return standardPrice;
+  }, [bookingSlot, durationHours, currentMember]);
 
   const activeCourt = useMemo(() => {
     return courts.find(c => c.id === selectedCourtId) || courts[0];
@@ -152,7 +172,7 @@ export default function CourtSchedule({
       const endHourStr = String(endHourVal).padStart(2, '0') + ':00';
       
       // Calculate Total Pricing dynamically
-      const totalPrice = calculateDurationPrice(bookingSlot.startVal, durationHours);
+      const totalPrice = finalPrice;
 
       // Generate a unique Booking ID
       const bookingId = "BK" + Math.floor(100000 + Math.random() * 900000);
@@ -442,6 +462,12 @@ export default function CourtSchedule({
                   onChange={(e) => setCustPhone(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 outline-none p-2.5 rounded-xl focus:border-emerald-500 text-slate-800 text-xs transition-all font-mono"
                 />
+                {currentMember && (
+                  <div className="mt-1.5 bg-emerald-50 text-emerald-800 border border-emerald-150 rounded-lg p-2.5 flex items-center gap-1.5 text-[11px] font-semibold animate-fade-in">
+                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 animate-pulse" />
+                    <span>Member Terdeteksi: <strong className="text-emerald-950 font-bold capitalize">{currentMember.name}</strong> (Diskon Rp 10.000/jam diterapkan!)</span>
+                  </div>
+                )}
               </div>
 
               {/* Duration selection dropdown */}
@@ -467,10 +493,21 @@ export default function CourtSchedule({
               <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100 flex items-center justify-between mt-6">
                 <div>
                   <span className="text-emerald-800 text-xs font-semibold block">Total Biaya Sewa</span>
-                  <span className="text-[11px] text-emerald-600 font-mono">Berdasarkan tarif jam sewa terpilih ({durationHours} Jam)</span>
+                  <span className="text-[11px] text-emerald-600 font-mono">
+                    {currentMember 
+                      ? `Tarif diskon member (${durationHours} Jam)` 
+                      : `Berdasarkan tarif jam sewa terpilih (${durationHours} Jam)`}
+                  </span>
                 </div>
-                <div className="text-right font-extrabold text-emerald-700 text-lg">
-                  Rp {calculateDurationPrice(bookingSlot.startVal, durationHours).toLocaleString('id-ID')}
+                <div className="text-right">
+                  {currentMember && (
+                    <span className="text-slate-400 text-xs line-through block font-mono">
+                      Rp {calculateDurationPrice(bookingSlot.startVal, durationHours).toLocaleString('id-ID')}
+                    </span>
+                  )}
+                  <span className="font-extrabold text-emerald-700 text-lg block">
+                    Rp {finalPrice.toLocaleString('id-ID')}
+                  </span>
                 </div>
               </div>
 

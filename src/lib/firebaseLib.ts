@@ -8,6 +8,7 @@ import {
   getDoc, 
   getDocs, 
   updateDoc,
+  deleteDoc,
   query,
   orderBy,
   getDocFromServer,
@@ -323,6 +324,68 @@ export const subscribeFirestoreTransactions = (
       txList.push(d.data() as FinancialTransaction);
     });
     onUpdate(txList);
+  }, (error) => {
+    handleFirestoreError(error, OperationType.GET, path);
+    if (onError) onError(error);
+  });
+};
+
+// 5. Member Helpers and Types
+export interface Member {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  createdAt: string;
+}
+
+export const getFirestoreMembers = async (): Promise<Member[]> => {
+  try {
+    const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
+    const s = await getDocs(q);
+    const membersList: Member[] = [];
+    s.forEach((d) => {
+      membersList.push(d.data() as Member);
+    });
+    return membersList;
+  } catch (error) {
+    console.error("Failed to fetch members from Firestore:", error);
+    return [];
+  }
+};
+
+export const saveFirestoreMember = async (member: Member): Promise<void> => {
+  try {
+    await setDoc(doc(db, 'members', member.id), member);
+    console.log("Successfully saved member to Firestore:", member.id);
+  } catch (error) {
+    console.error("Failed to save member to Firestore:", error);
+    throw error;
+  }
+};
+
+export const deleteFirestoreMember = async (memberId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, 'members', memberId));
+    console.log("Successfully deleted member from Firestore:", memberId);
+  } catch (error) {
+    console.error("Failed to delete member from Firestore:", error);
+    throw error;
+  }
+};
+
+export const subscribeFirestoreMembers = (
+  onUpdate: (members: Member[]) => void,
+  onError?: (error: any) => void
+) => {
+  const path = 'members';
+  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const membersList: Member[] = [];
+    snapshot.forEach((d) => {
+      membersList.push(d.data() as Member);
+    });
+    onUpdate(membersList);
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, path);
     if (onError) onError(error);

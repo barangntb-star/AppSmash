@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Copy, ArrowRight, ShieldCheck, Wallet, Landmark, QrCode, Phone, Download } from 'lucide-react';
+import { X, CheckCircle, Copy, ArrowRight, ShieldCheck, Wallet, Landmark, QrCode, Phone, Download, Coins } from 'lucide-react';
 import { Booking, updateBookingStatus } from '../lib/sheetsLib';
 import { AppSettings } from '../lib/firebaseLib';
 
@@ -22,7 +22,7 @@ export default function PaymentModal({
   onPaymentCompleted,
   appSettings
 }: PaymentModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'va' | 'wallet'>('qris');
+  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'va' | 'wallet' | 'cash'>('qris');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [countdown, setCountdown] = useState(900); // 15 mins
@@ -163,42 +163,54 @@ export default function PaymentModal({
             {/* Methods Switcher */}
             <div className="p-5">
               <p className="text-xs font-semibold text-slate-500 mb-2.5">Pilih Metode Pembayaran</p>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('qris')}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2 py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center ${
                     paymentMethod === 'qris'
-                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700'
+                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700 font-bold'
                       : 'border-slate-200 hover:border-slate-400 text-slate-600'
                   }`}
                 >
-                  <QrCode className="w-5 h-5" />
-                  <span className="text-[11px] font-semibold">QRIS</span>
+                  <QrCode className="w-5 h-5 shrink-0" />
+                  <span className="text-[10px] sm:text-[11px] leading-tight shrink-0">QRIS</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('va')}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2 py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center ${
                     paymentMethod === 'va'
-                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700'
+                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700 font-bold'
                       : 'border-slate-200 hover:border-slate-400 text-slate-600'
                   }`}
                 >
-                  <Landmark className="w-5 h-5" />
-                  <span className="text-[11px] font-semibold">Virtual Account</span>
+                  <Landmark className="w-5 h-5 shrink-0" />
+                  <span className="text-[10px] sm:text-[11px] leading-tight shrink-0">VA Bank</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('wallet')}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-2 py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center ${
                     paymentMethod === 'wallet'
-                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700'
+                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700 font-bold'
                       : 'border-slate-200 hover:border-slate-400 text-slate-600'
                   }`}
                 >
-                  <Wallet className="w-5 h-5" />
-                  <span className="text-[11px] font-semibold">E-Wallet</span>
+                  <Wallet className="w-5 h-5 shrink-0" />
+                  <span className="text-[10px] sm:text-[11px] leading-tight shrink-0">E-Wallet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`p-2 py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center ${
+                    paymentMethod === 'cash'
+                      ? 'border-emerald-500 bg-emerald-50/40 text-emerald-700 font-bold'
+                      : 'border-slate-200 hover:border-slate-400 text-slate-600'
+                  }`}
+                >
+                  <Coins className="w-5 h-5 shrink-0 text-amber-500" />
+                  <span className="text-[10px] sm:text-[11px] leading-tight shrink-0">Tunai / Cash</span>
                 </button>
               </div>
 
@@ -288,6 +300,25 @@ export default function PaymentModal({
                     <p className="text-[11px] text-slate-500 leading-relaxed">
                       Kami akan mengirimi Anda tagihan push notification langsung ke aplikasi e-wallet Anda. Konfirmasi tagihan tersebut agar pembayaran selesai secara instan.
                     </p>
+                  </div>
+                )}
+
+                {paymentMethod === 'cash' && (
+                  <div className="w-full text-left space-y-3.5">
+                    <div>
+                      <div className="text-xs text-slate-400 mb-1">Metode Pembayaran</div>
+                      <div className="text-sm font-semibold text-slate-800 uppercase flex items-center gap-1.5">
+                        <Coins className="w-4.5 h-4.5 text-amber-500 animate-bounce" />
+                        CASH / TUNAI (BAYAR DI KASIR)
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-500 leading-relaxed font-sans space-y-2 bg-slate-50/55 p-3.5 rounded-xl border border-slate-150">
+                      <p className="font-bold text-slate-700">Petunjuk Pembayaran Tunai:</p>
+                      <p>1. Silakan lakukan pembayaran langsung secara tunai/cash kepada petugas kasir/admin di lapangan.</p>
+                      <p>2. Sebutkan ID Booking: <span className="font-bold text-slate-950 font-mono text-xs select-all bg-white px-1 border border-slate-200 rounded">{booking.id}</span> atau tunjukkan layar HP ini.</p>
+                      <p>3. Bayar dengan uang tunai nominal pas sebesar <span className="font-extrabold text-emerald-700 font-mono bg-white px-1.5 py-0.5 border border-emerald-100 rounded text-[11px]">Rp {booking.totalPrice.toLocaleString()}</span>.</p>
+                      <p>4. Setelah uang diserahkan, silakan klik tombol <strong>"Konfirmasi Bayar Instan"</strong> di bawah untuk memproses dan mencatat pesanan Anda sebagai <strong>"Lunas"</strong>.</p>
+                    </div>
                   </div>
                 )}
               </div>

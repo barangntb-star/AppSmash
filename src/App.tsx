@@ -17,7 +17,11 @@ import {
   subscribeFirestoreBookings,
   subscribeFirestoreTransactions,
   getAppSettings,
-  AppSettings
+  AppSettings,
+  Member,
+  saveFirestoreMember,
+  deleteFirestoreMember,
+  subscribeFirestoreMembers
 } from './lib/firebaseLib';
 import { 
   findOrCreateSpreadsheet, 
@@ -37,6 +41,7 @@ import QrScannerModal from './components/QrScannerModal';
 import PrintableBarcodes from './components/PrintableBarcodes';
 import AdminFinancialPortal from './components/AdminFinancialPortal';
 import AppSettingsTab from './components/AppSettingsTab';
+import MemberManagementTab from './components/MemberManagementTab';
 import { 
   Database, 
   LogOut, 
@@ -52,7 +57,8 @@ import {
   ShieldCheck,
   CheckCircle,
   Clock,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 
 export default function App() {
@@ -73,8 +79,9 @@ export default function App() {
   const [courts, setCourts] = useState<Court[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string>('CT001');
-  const [activeTab, setActiveTab] = useState<'scheduler' | 'barcodes' | 'admin'>('scheduler');
+  const [activeTab, setActiveTab] = useState<'scheduler' | 'barcodes' | 'admin' | 'settings' | 'members'>('scheduler');
   const [isScanned, setIsScanned] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('scanned') === 'true';
@@ -236,8 +243,19 @@ export default function App() {
       }
     );
 
+    // Subscribe to members collection in real-time
+    const unsubscribeMembers = subscribeFirestoreMembers(
+      (realtimeMembers) => {
+        setMembers(realtimeMembers);
+      },
+      (err) => {
+        console.error("Gagal sinkronisasi data online members:", err);
+      }
+    );
+
     return () => {
       unsubscribeBookings();
+      unsubscribeMembers();
     };
   }, []);
 
@@ -485,8 +503,7 @@ export default function App() {
                     <button
                       onClick={() => {
                         alert("Terima kasih anda telah menggunakan Fazada Badminton");
-                        setIsScanned(false);
-                        window.location.href = window.location.origin + window.location.pathname;
+                        window.location.href = "https://www.google.com";
                       }}
                       className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold border border-rose-100 transition-colors flex items-center gap-1 cursor-pointer"
                       title="Keluar dari Portal Penyewa"
@@ -578,6 +595,19 @@ export default function App() {
                   <TrendingUp className="w-4 h-4" />
                   Portal Admin Keuangan
                   {activeTab === 'admin' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('members')}
+                  className={`h-full px-1 text-xs font-bold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'members' ? 'text-emerald-700 font-extrabold' : 'text-slate-500 hover:text-slate-850'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  Input Data Member
+                  {activeTab === 'members' && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full animate-fade-in"></div>
                   )}
                 </button>
@@ -707,6 +737,7 @@ export default function App() {
                   selectedCourtId={selectedCourtId}
                   onCourtChange={setSelectedCourtId}
                   onBookingAdded={handleBookingAdded}
+                  members={members}
                 />
               </section>
 
@@ -738,6 +769,16 @@ export default function App() {
                 spreadsheetId={spreadsheetId || ""}
                 onTransactionAdded={handleTransactionAdded}
                 onRefreshAll={refreshData}
+              />
+            </section>
+          )}
+
+          {user && activeTab === 'members' && (
+            <section className="animate-fade-in">
+              <MemberManagementTab
+                members={members}
+                onAddMember={saveFirestoreMember}
+                onDeleteMember={deleteFirestoreMember}
               />
             </section>
           )}

@@ -60,6 +60,19 @@
         "synced": { "type": "boolean" }
       },
       "required": ["id", "date", "type", "amount", "category"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Premium court member details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "address"]
     }
   },
   "firestore": {
@@ -78,6 +91,10 @@
     "transactions/{transactionId}": {
       "schema": "FinancialTransaction",
       "description": "Financial Transactions collection"
+    },
+    "members/{memberId}": {
+      "schema": "Member",
+      "description": "Registered court members list"
     }
   }
 }
