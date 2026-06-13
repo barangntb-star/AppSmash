@@ -486,7 +486,7 @@ export default function App() {
                       onClick={() => {
                         alert("Terima kasih anda telah menggunakan Fazada Badminton");
                         setIsScanned(false);
-                        window.history.replaceState({}, document.title, window.location.pathname);
+                        window.location.href = window.location.origin + window.location.pathname;
                       }}
                       className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-bold border border-rose-100 transition-colors flex items-center gap-1 cursor-pointer"
                       title="Keluar dari Portal Penyewa"
@@ -602,6 +602,60 @@ export default function App() {
         {/* Core Body Container */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
           
+          {authError && (
+            <div className="bg-rose-50 text-rose-800 text-xs px-4 py-3.5 border border-rose-100 rounded-xl flex items-start gap-3 md:gap-4 font-medium animate-fade-in">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-2 flex-1">
+                <div>
+                  <p className="font-extrabold text-slate-850">Gagal Otorisasi / Login Admin</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 font-bold">Kode Error: {authError.code}</p>
+                </div>
+                <p className="text-slate-600 leading-relaxed font-sans text-xs">
+                  {authError.code === 'auth/popup-closed-by-user' || authError.message.includes('popup-closed-by-user') || authError.message.includes('popup') ? (
+                    <span>
+                      Jendela popup login Google ditutup atau diblokir. Karena keterbatasan kebijakan keamanan browser saat memuat aplikasi di dalam iFrame AI Studio, 
+                      proses autograb popup Google mungkin dibatasi. Silakan klik tombol <strong>"Buka di Tab Baru"</strong> di bawah ini untuk masuk sebagai Admin secara lancar.
+                    </span>
+                  ) : authError.isDomainError ? (
+                    <span>
+                      Domain situs ini belum ditambahkan ke daftar Authorized Domains di modul Google Auth Firebase Console Anda. 
+                      Harap daftarkan domain ini di setelan Firebase Authentication agar login berfungsi.
+                    </span>
+                  ) : (
+                    <span>Detail Error: {authError.message}</span>
+                  )}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 pt-1 font-bold">
+                  <a
+                    href={window.location.origin + window.location.pathname}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors inline-flex items-center gap-1.5 shadow-xs cursor-pointer text-[11px]"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Buka Aplikasi di Tab Baru
+                  </a>
+                  <button
+                    onClick={() => {
+                      setAuthError(null);
+                      handleLogin();
+                    }}
+                    className="px-3 py-2 bg-white border border-rose-200 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors inline-block cursor-pointer text-[11px]"
+                  >
+                    Coba Lagi
+                  </button>
+                  <button
+                    onClick={() => setAuthError(null)}
+                    className="px-3 py-2 bg-transparent text-slate-450 hover:text-slate-650 transition-colors inline-block cursor-pointer text-[11px]"
+                  >
+                    Tutup Pesan
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Database Sync Progress and Info header */}
           {user && !isScanned && isDbLoading && (
             <div className="bg-emerald-50 text-emerald-800 text-xs px-4 py-3 rounded-xl border border-emerald-100 flex items-center gap-3.5 font-medium animate-pulse shadow-xs">
